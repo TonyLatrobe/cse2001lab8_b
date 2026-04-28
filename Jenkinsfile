@@ -190,32 +190,28 @@ spec:
       steps {
         container('python-ci') {
           sh '''
-            cd terraform
+              cd terraform
 
-            # Import any resources that already exist in the cluster so that
-            # apply never tries to create something that is already there.
-            # || true is safe: if the resource is already in state, import
-            # is a no-op; if it does not exist yet, Terraform will create it.
-            terraform init \
-              -input=false \
-              -plugin-dir=/usr/local/terraform-plugins
+              terraform init \
+                -input=false \
+                -plugin-dir=/usr/local/terraform-plugins
 
-            set +e
-            terraform plan \
-              -input=false \
-              -out=tfplan \
-              -detailed-exitcode
-            PLAN_EXIT=$?
-            set -e
+              set +e
+              terraform plan \
+                -input=false \
+                -out=tfplan \
+                -detailed-exitcode
+              PLAN_EXIT=$?
+              set -e
 
-            if [ "$PLAN_EXIT" -eq 1 ]; then
-              echo "Terraform plan failed!"
-              exit 1
-            fi
+              echo "PLAN_EXIT=$PLAN_EXIT"
 
-            # FIX: removed duplicate terraform show call
-            terraform show -json tfplan > ../terraform-plan.json
-            echo "Terraform plan exit code: $PLAN_EXIT (0=no changes, 2=drift detected)"
+              if [ "$PLAN_EXIT" -eq 1 ]; then
+                echo "Terraform plan failed!"
+                exit 1
+              fi
+
+              terraform show -json tfplan > ../terraform-plan.json
           '''
         }
       }
