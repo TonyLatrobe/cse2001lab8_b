@@ -190,17 +190,8 @@ spec:
       steps {
         container('python-ci') {
           sh '''
-              cd terraform
-
-              terraform init \
-                -input=false \
-                -plugin-dir=/usr/local/terraform-plugins
-
               set +e
-              terraform plan \
-                -input=false \
-                -out=tfplan \
-                -detailed-exitcode
+              terraform plan -input=false -out=tfplan -detailed-exitcode
               PLAN_EXIT=$?
               set -e
 
@@ -211,9 +202,13 @@ spec:
                 exit 1
               fi
 
+              if [ "$PLAN_EXIT" -gt 2 ]; then
+                echo "❌ Terraform crashed (unexpected exit code)"
+                exit 1
+              fi
+
               if [ "$PLAN_EXIT" -eq 2 ]; then
                 echo "⚠️ Terraform drift detected (changes exist)"
-                echo "⚠️ Drift detected but continuing pipeline"
               fi
           '''
         }
