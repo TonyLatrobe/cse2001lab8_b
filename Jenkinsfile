@@ -51,14 +51,22 @@ spec:
             container('python-ci') {
               sh '''
                 pip install -q -r app/requirements.txt
+
                 bandit -r app/ \
                   --severity-level medium \
                   -f xml \
-                  -o bandit-results.xml || true
-                bandit -r app/ --severity-level medium || true
+                  -o bandit-results.xml
+                bandit_exit=$?
+
+                if [ "$bandit_exit" -ne 0 ]; then
+                  echo "⚠️ Security issues detected (see report)"
+                fi
+
+                exit 0
               '''
             }
           }
+        }
           post {
             always {
               junit allowEmptyResults: true, testResults: 'bandit-results.xml'
