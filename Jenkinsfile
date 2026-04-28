@@ -49,21 +49,30 @@ spec:
         stage('SAST — Bandit') {
           steps {
             container('python-ci') {
-              sh '''
-                pip install -q -r app/requirements.txt
+                sh '''
+                        set +e
 
-                bandit -r app/ \
-                  --severity-level medium \
-                  -f xml \
-                  -o bandit-results.xml
-                bandit_exit=$?
+                        pip install -q -r app/requirements.txt
 
-                if [ "$bandit_exit" -ne 0 ]; then
-                  echo "⚠️ Security issues detected (see report)"
-                fi
+                        bandit -r app/ \
+                          --severity-level medium \
+                          -f xml \
+                          -o bandit-results.xml
+                        bandit_exit=$?
 
-                exit 0
-              '''
+                        set -e
+
+                        if [ "$bandit_exit" -eq 0 ]; then
+                          echo "✅ Bandit passed"
+                        elif [ "$bandit_exit" -eq 1 ]; then
+                          echo "❌ Bandit scan failed (tool error)"
+                          exit 1
+                        else
+                          echo "⚠️ Security issues detected (review required)"
+                        fi
+
+                        exit 0
+                      '''
             }
           }
           post {
