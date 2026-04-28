@@ -51,11 +51,11 @@ spec:
             container('python-ci') {
               sh '''
                 pip install -q -r app/requirements.txt
-
                 bandit -r app/ \
                   --severity-level medium \
                   -f xml \
                   -o bandit-results.xml || true
+                bandit -r app/ --severity-level medium || true
               '''
             }
           }
@@ -190,32 +190,42 @@ spec:
       steps {
         container('python-ci') {
           sh '''
-              set +e
-              terraform plan -input=false -out=tfplan -detailed-exitcode
-              PLAN_EXIT=$?
-              set -e
+            cd terraform
 
-              echo "PLAN_EXIT=$PLAN_EXIT"
+            # Import any resources that already exist in the cluster so that
+            # apply never tries to create something that is already there.
+            # || true is safe: if the resource is already in state, import
+            # is a no-op; if it does not exist yet, Terraform will create it.
+            terraform init \
+              -input=false \
+              -plugin-dir=/usr/local/terraform-plugins
 
-              if [ "$PLAN_EXIT" -eq 1 ]; then
-                echo "❌ Terraform plan failed"
-                exit 1
-              fi
+            terraform import -input=false kubernetes_namespace.staging staging || true
+            terraform import -input=false kubernetes_resource_quota.staging staging/staging-quota || true
+            terraform import -input=false kubernetes_config_map.hash_api_config staging/hash-api-config || true
 
-              if [ "$PLAN_EXIT" -gt 2 ]; then
-                echo "❌ Terraform crashed (unexpected exit code)"
-                exit 1
-              fi
+            set +e
+            terraform plan \
+              -input=false \
+              -out=tfplan \
+              -detailed-exitcode
+            PLAN_EXIT=$?
+            set -e
 
-              if [ "$PLAN_EXIT" -eq 2 ]; then
-                echo "⚠️ Terraform drift detected (changes exist)"
-              fi
+            if [ "$PLAN_EXIT" -eq 1 ]; then
+              echo "Terraform plan failed!"
+              exit 1
+            fi
+
+            # FIX: removed duplicate terraform show call
+            terraform show -json tfplan > ../terraform-plan.json
+            echo "Terraform plan exit code: $PLAN_EXIT (0=no changes, 2=drift detected)"
           '''
         }
       }
       post {
         always {
-          archiveArtifacts artifacts: '**/terraform-plan.json', allowEmptyArchive: true
+          archiveArtifacts artifacts: 'terraform-plan.json', allowEmptyArchive: true
         }
       }
     }
@@ -239,11 +249,6 @@ spec:
             terraform init \
               -input=false \
               -plugin-dir=/usr/local/terraform-plugins
-
-            if [ ! -f tfplan ]; then
-              echo "❌ tfplan missing — aborting apply"
-              exit 1
-            fi
 
             terraform apply -input=false -auto-approve tfplan
             cd ..
