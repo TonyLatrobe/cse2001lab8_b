@@ -33,20 +33,6 @@ provider "kubernetes" {
 # Safe to keep permanently — if a resource is already in state, import is a
 # no-op. If it does not exist yet, Terraform creates it normally.
 
-import {
-  to = kubernetes_namespace.staging
-  id = "staging"
-}
-
-import {
-  to = kubernetes_resource_quota.staging
-  id = "staging/staging-quota"
-}
-
-import {
-  to = kubernetes_config_map.hash_api_config
-  id = "staging/hash-api-config"
-}
 
 # ── Namespace ──────────────────────────────────────────────────────────────────
 
