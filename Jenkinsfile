@@ -200,10 +200,6 @@ spec:
               -input=false \
               -plugin-dir=/usr/local/terraform-plugins
 
-            terraform import -input=false kubernetes_namespace.staging staging || true
-            terraform import -input=false kubernetes_resource_quota.staging staging/staging-quota || true
-            terraform import -input=false kubernetes_config_map.hash_api_config staging/hash-api-config || true
-
             set +e
             terraform plan \
               -input=false \
