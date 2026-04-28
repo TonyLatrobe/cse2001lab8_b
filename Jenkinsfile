@@ -51,11 +51,11 @@ spec:
             container('python-ci') {
               sh '''
                 pip install -q -r app/requirements.txt
+
                 bandit -r app/ \
                   --severity-level medium \
                   -f xml \
                   -o bandit-results.xml || true
-                bandit -r app/ --severity-level medium || true
               '''
             }
           }
@@ -207,17 +207,20 @@ spec:
               echo "PLAN_EXIT=$PLAN_EXIT"
 
               if [ "$PLAN_EXIT" -eq 1 ]; then
-                echo "Terraform plan failed!"
+                echo "❌ Terraform plan failed"
                 exit 1
               fi
 
-              terraform show -json tfplan > ../terraform-plan.json
+              if [ "$PLAN_EXIT" -eq 2 ]; then
+                echo "⚠️ Terraform drift detected (changes exist)"
+                echo "⚠️ Drift detected but continuing pipeline"
+              fi
           '''
         }
       }
       post {
         always {
-          archiveArtifacts artifacts: 'terraform-plan.json', allowEmptyArchive: true
+          archiveArtifacts artifacts: '**/terraform-plan.json', allowEmptyArchive: true
         }
       }
     }
@@ -241,6 +244,11 @@ spec:
             terraform init \
               -input=false \
               -plugin-dir=/usr/local/terraform-plugins
+
+            if [ ! -f tfplan ]; then
+              echo "❌ tfplan missing — aborting apply"
+              exit 1
+            fi
 
             terraform apply -input=false -auto-approve tfplan
             cd ..
