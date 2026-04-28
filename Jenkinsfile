@@ -66,7 +66,6 @@ spec:
               '''
             }
           }
-        }
           post {
             always {
               junit allowEmptyResults: true, testResults: 'bandit-results.xml'
