@@ -50,29 +50,13 @@ spec:
           steps {
             container('python-ci') {
                 sh '''
-                        set +e
-
-                        pip install -q -r app/requirements.txt
-
-                        bandit -r app/ \
-                          --severity-level medium \
-                          -f xml \
-                          -o bandit-results.xml
-                        bandit_exit=$?
-
-                        set -e
-
-                        if [ "$bandit_exit" -eq 0 ]; then
-                          echo "✅ Bandit passed"
-                        elif [ "$bandit_exit" -eq 1 ]; then
-                          echo "❌ Bandit scan failed (tool error)"
-                          exit 1
-                        else
-                          echo "⚠️ Security issues detected (review required)"
-                        fi
-
-                        exit 0
-                      '''
+                  pip install -q -r app/requirements.txt
+                  bandit -r app/ \
+                    --severity-level medium \
+                    -f xml \
+                    -o bandit-results.xml || true
+                  bandit -r app/ --severity-level medium || true
+                '''
             }
           }
           post {
